@@ -1,0 +1,81 @@
+- name: Ensure Minecraft user
+  ansible.builtin.user:
+    name: minecraft
+    groups: minecraft
+    home: "{{ minecraft_dir }}"
+
+- name: Ensure OpenJDK and remote console
+  ansible.builtin.dnf:
+    name: "{{ pkgs }}"
+    state: latest
+
+- name: Install systemd service
+  ansible.builtin.template:
+    src: minecraft.service.j2
+    dest: /etc/systemd/system/minecraft.service
+  register: service_updated
+
+- name: Get version information
+  block:
+    - name: Determine latest version manifest
+      ansible.builtin.uri:
+        url: https://launchermeta.mojang.com/mc/game/version_manifest.json
+        return_content: true
+      register: manifest
+
+    - set_fact:
+        minecraft_latest: "{{ manifest.content | from_json | json_query('latest.release') }}"
+    - set_fact:
+        metadata_url: "{{ manifest.content | from_json | json_query(query) | first }}"
+      vars:
+        query: "versions[?id=='{{ minecraft_latest }}'].url"
+
+    - name: Determine latest version metadata
+      ansible.builtin.uri:
+        url: "{{ metadata_url }}"
+        return_content: true
+      register: metadata
+
+    - set_fact:
+        download_url: "{{ metadata.content | from_json | json_query('downloads.server.url') }}"
+        download_sha: "{{ metadata.content | from_json | json_query('downloads.server.sha1') }}"
+
+    - name: Determine local sha1
+      ansible.builtin.stat:
+        checksum_algorithm: sha1
+        path: "{{ minecraft_dir }}/server.jar"
+      register: local_jar
+
+    - set_fact:
+        jar_updated: "{{ local_jar.stat.checksum is not defined or download_sha != local_jar.stat.checksum }}"
+
+- name: Print manifest
+  ansible.builtin.debug:
+    var: jar_updated
+
+- name: Print service updated
+  ansible.builtin.debug:
+    var: service_updated.changed
+
+- name: Get new server JAR
+  ansible.builtin.get_url:
+    url: "{{ download_url }}"
+    dest: "{{ minecraft_dir }}/server.jar"
+    group: minecraft
+    owner: minecraft
+  when: jar_updated
+
+- name: Restart the Minecraft server
+  ansible.builtin.systemd_service:
+    name: minecraft
+    state: restarted
+    enabled: true
+  when: jar_updated or service_updated is changed
+  register: service_restarted
+
+- name: Make sure the Minecraft server is running
+  ansible.builtin.systemd_service:
+    name: minecraft
+    state: started
+    enabled: true
+  when: service_restarted is skipped

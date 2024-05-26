@@ -1,0 +1,4 @@
+pkgs:
+  - java-17-openjdk
+  - mcrcon
+minecraft_dir: /opt/minecraft
