@@ -57,6 +57,16 @@
   ansible.builtin.debug:
     var: service_updated.changed
 
+- name: Update settings
+  merge_configuration:
+    path: "{{ minecraft_dir }}/server.properties"
+    settings:
+      enable-rcon: "true"
+      rcon.password: "{{ minecraft_password }}"
+      server-name: "{{ ansible_hostname }}"
+      motd: "Well, come, to the Wolf family server\\!"
+  register: settings_updated
+
 - name: Get new server JAR
   ansible.builtin.get_url:
     url: "{{ download_url }}"
@@ -70,7 +80,7 @@
     name: minecraft
     state: restarted
     enabled: true
-  when: jar_updated or service_updated is changed
+  when: jar_updated or service_updated is changed or settings_updated is changed
   register: service_restarted
 
 - name: Make sure the Minecraft server is running

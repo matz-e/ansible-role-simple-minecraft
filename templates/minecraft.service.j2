@@ -19,7 +19,7 @@ PrivateTmp=true
 ReadWriteDirectories={{ minecraft_dir }}
 WorkingDirectory={{ minecraft_dir }}
 ExecStart=/usr/bin/java -Xmx1024M -Xms1024M -jar server.jar --nogui
-ExecStop=/usr/bin/mcrcon -H 0.0.0.0 -p mine123 -w 5 "say Server will be shut down!" save-all stop
+ExecStop=/usr/bin/mcrcon -H 0.0.0.0 -p {{ minecraft_password }} -w 5 "say Server will be shut down!" save-all stop
 
 [Install]
 WantedBy=multi-user.target
