@@ -1,5 +1,5 @@
 pkgs:
-  - java-17-openjdk
+  - java-21-openjdk
   - mcrcon
 minecraft_dir: /opt/minecraft
 minecraft_password: mine123
